@@ -1,4 +1,5 @@
 OS
+<<<<<<< HEAD
 ==
 
 Different steps of the building of a multitask OS for an ARM target (ARM926)
@@ -12,3 +13,6 @@ How to launch the demos :
 $ cd dir (where dir is the directory of the demo)
 $ make
 $ qemu-system-arm -M versatilepb -m 128M -nographic -kernel ./os.bin
+=======
+==
+>>>>>>> c84a92c889a79b627e0a425674bba1a2ecc26982
