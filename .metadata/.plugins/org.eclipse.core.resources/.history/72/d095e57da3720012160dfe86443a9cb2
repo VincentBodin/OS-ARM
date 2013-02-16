@@ -1,0 +1,6 @@
+#include "Task.h"
+
+void init_task(struct taskstruct* task){
+
+}
+
