@@ -3,4 +3,5 @@
 #define VIC_ENABLE_INT (*((volatile unsigned int *)0x10140010)) //offset = 0x010 Enables the selected interrupt
 #define VIC_CLEAR_INT  (*((volatile unsigned int *)0x10140014)) //offset 0x014 Clear the selected interrupt
 
-
+//TIMER 01 = bit 4;
+//UART0 = bit 12;

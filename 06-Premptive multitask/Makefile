@@ -16,7 +16,7 @@ os.elf : linker.ld os.o startup.o context_switch.o syscall.o
 	arm-linux-ld -N -Ttext=0x10000 -T linker.ld os.o startup.o syscall.o context_switch.o -o os.elf 
 
 os.o : os.c include/timer.h include/VIC.h include/UART.h include/asm.h Task.h
-	arm-linux-gcc -mcpu=arm926ej-s  -c os.c -o os.o
+	arm-linux-gcc -mcpu=arm926ej-s  -c os.c -o os.o -g3
 	
 startup.o : startup.s
 	arm-linux-as -mcpu=arm926ej-s -g startup.s -o startup.o

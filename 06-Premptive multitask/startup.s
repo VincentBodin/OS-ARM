@@ -4,6 +4,13 @@
 .global vectors_start
 .global vectors_end
 
+.EQU USR_MODE, 0x10
+.EQU SYS_MODE, 0x1F
+.EQU SVC_MODE, 0x13
+.EQU IRQ_MODE, 0x12
+.EQU INT_OFF, 0xC0
+
+
 vectors_start:
 	LDR PC, reset_handler_addr
 	LDR PC, undef_handler_addr
@@ -26,61 +33,80 @@ vectors_end:
 
 reset_handler:
 	/* set Supervisor stack */
-	LDR sp, =stack_top
+	MOV sp, #0x80000
 	
-	/* copy vector table to address 0 */
+	MSR CPSR_c, #INT_OFF|SYS_MODE
+	MOV sp, #0x40000
+	
+	MSR CPSR_c, #INT_OFF|IRQ_MODE
+	MOV sp, #0x10000
+	
+	MSR CPSR_c,#INT_OFF|SVC_MODE
+	
+	/* Copy table vector to address 0 */
 	BL copy_vectors
-	
-	/* get Program Status Register */
-	MRS r0, cpsr /* Save the cpsr in r0 */
-	
-	/* go in IRQ mode */
-	BIC r1, r0, #0x1F
-	ORR r1, r1, #0x12
-	MSR cpsr, r1
-	
-	/* set IRQ stack */
-	LDR sp, =irq_stack_top
-	
-	/* Enable IRQs */
-	BIC r0, r0, #0x80
-	
-	/* go back in Supervisor mode */
-	MSR cpsr, r0
-	
+
 	/* jump to main */
-	BL c_entry
-	B .
+	B c_entry
 	
 irq_handler:
-		
-	SUB lr,lr,#4 
-	STMFD sp!,{r0-r3,lr}
+	/* Save the return value */
+	SUB lr,lr,#4
+	BL event_irq_handler
 
-	msr CPSR_c, #0xDF /* System mode */
-	STMFD sp!, {r0-r15}
-	mov r0, sp
-	/* Save current task context */
-	BL SwitchTasks
 
-	LDMFD sp!,{r0-r3,pc}^
+	MOV r12,lr /* r12 contains the return value of usertask*/
+	MSR CPSR_c, #INT_OFF|SYS_MODE
+	MOV lr, r12
+	STMFD sp!,{r0-r12,lr}
+	NOP
+	/*MOV r0, sp
+	BL afficheValeurRegistres*/
+
+	MOV r0, sp
+	BL saveTaskContext
+
+	/*BL loadTaskContext
+	NOP
+	LDR r1, [r0, #4]
+	LDR r2, [r0, #8]
+	LDR r3, [r0, #12]
+	LDR r4, [r0, #16]
+	LDR r5, [r0, #20]
+	LDR r6, [r0, #24]
+	LDR r7, [r0, #28]
+	LDR r8, [r0, #32]
+	LDR r9, [r0, #36]
+	LDR r10, [r0, #40]
+	LDR r11, [r0, #44]
+	LDR r12, [r0, #48]
+	/*LDR sp [r0, #52]  JUMP OVER SP */
+	/* LDR lr, [r0, #56] NOT NEEDED */
+	/*LDR pc, [r0, #56]*/
+
+
+	/*MSR CPSR_c, #INT_OFF|IRQ_MODE*/
+	/*LDMFD sp!,{r0-r3,r12,pc}^*/
+
+	/* Load kernel state */
+	MSR CPSR_c,SVC_MODE
+	LDMFD sp!,{r1-r11,pc}
+	NOP
 	
 swi_handler:
 
-/* Save user state */
-	msr CPSR_c, #0xDF /* System mode */
-	/* Appeler une fonction de sauvegarde de contexte */
-	push {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,fp,ip,lr}
-	mov r0, sp
-	msr CPSR_c, #0xD3 /* Supervisor mode */
+	/* Save user state */
+	MSR CPSR_c, #INT_OFF|SYS_MODE
+	STMFD sp!,{r0-r12,lr}
+	NOP
+	MOV r0, sp
+	BL saveTaskContext
 
-	mrs ip, SPSR
-	stmfd r0!, {ip,lr}
-
+	NOP
 	/* Load kernel state */
-	pop {r4,r5,r6,r7,r8,r9,r10,fp,ip,lr}
-	mov sp, ip
-	bx lr
+	MSR CPSR_c,SVC_MODE
+	LDMFD sp!,{r0-r11,pc}
+	NOP
 	
 
 .end

@@ -1,3 +1,2 @@
 unsigned int * activate(unsigned int *stack);
 void syscall(unsigned int taskNumber);
-void asm_getRegistersValue(int registerValues[15]);

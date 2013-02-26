@@ -1,0 +1,30 @@
+
+
+.global swi_entry
+swi_entry:
+	/* Save user state */
+	MSR CPSR_c, SYS_MODE
+	STMFD sp!,{r0-r12,lr}
+	NOP
+	MOV r0, sp
+	BL saveTaskContext
+
+	/* Load kernel state */
+	STMFD sp!,{r0-r12,pc}
+
+
+.global activate
+activate:
+
+	/* Save kernel state */
+	STMFD sp!,{r0-r12,lr}
+	NOP
+
+	LDR r4, [r0]
+	msr CPSR_c, #0x10 /* User mode with IRQ enabled and FIQ disabled*/
+	mov pc, r4
+
+	pop {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,fp,ip,lr}
+	msr CPSR_c, #0xD3 /* Supervisor mode */
+
+	movs pc, lr

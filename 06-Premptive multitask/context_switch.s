@@ -1,34 +1,23 @@
-.global swi_entry
-swi_entry:
-	/* Save user state */
-	msr CPSR_c, #0xDF /* System mode */
-	/* Appeler une fonction de sauvegarde de contexte */
-	push {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,fp,ip,lr}
-	mov r0, sp
-	msr CPSR_c, #0xD3 /* Supervisor mode */
+.EQU USR_MODE, 0x10
+.EQU SYS_MODE, 0x1F
+.EQU SVC_MODE, 0x13
+.EQU IRQ_MODE, 0x12
+.EQU INT_OFF, 0xC0
 
-	mrs ip, SPSR
-	stmfd r0!, {ip,lr}
-
-	/* Load kernel state */
-	pop {r4,r5,r6,r7,r8,r9,r10,fp,ip,lr}
-	mov sp, ip
-	bx lr
 
 .global activate
 activate:
 
-	/* Save kernel state */
-	/*mov ip, sp
-	push {r4,r5,r6,r7,r8,r9,r10,r11,ip,lr}*/
 
 
-	/*msr CPSR_c, #0xDF /* System mode */
-	LDR r4, [r0]
-	mov pc, r4
+	/*LDR r12, [r0]*/
+	STMFD sp!,{r1-r11,lr}
+	NOP
+	msr CPSR_c, #0x10 /* User mode with IRQ enabled and FIQ disabled*/
+	/*mov sp, r0*/
+	mov pc, r1
 
-	pop {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,fp,ip,lr}
+	/*pop {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,fp,ip,lr}
 	msr CPSR_c, #0xD3 /* Supervisor mode */
 
-	movs pc, lr
-
+	/*movs pc, lr*/

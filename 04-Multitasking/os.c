@@ -63,7 +63,7 @@ int c_entry(void) {
 	task_count += 1;
 	
 	write_serial("OS : Starting...\n");
-	write_serial("OS : Scheduler implemention : Round Robin\n");
+	write_serial("OS : Scheduler implementation : Round Robin\n");
 	while(1) {
 		usertasks[current_task] = activate(usertasks[current_task]);
 		current_task++;

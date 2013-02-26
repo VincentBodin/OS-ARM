@@ -1,0 +1,84 @@
+.text
+.code 32
+
+.global vectors_start
+.global vectors_end
+
+.EQU USR_MODE, 0x10
+.EQU SYS_MODE, 0x1F
+.EQU SVC_MODE, 0x13
+.EQU IRQ_MODE, 0x12
+.EQU INT_OFF, 0xC0
+
+
+vectors_start:
+	LDR PC, reset_handler_addr
+	LDR PC, undef_handler_addr
+	LDR PC, swi_handler_addr
+	LDR PC, prefetch_abort_handler_addr
+	LDR PC, data_abort_handler_addr
+	B .
+	LDR PC, irq_handler_addr
+	LDR PC, fiq_handler_addr
+
+reset_handler_addr: .word reset_handler
+undef_handler_addr: .word undef_handler
+swi_handler_addr: .word swi_handler
+prefetch_abort_handler_addr: .word prefetch_abort_handler
+data_abort_handler_addr: .word data_abort_handler
+irq_handler_addr: .word irq_handler
+fiq_handler_addr: .word fiq_handler
+
+vectors_end:
+
+reset_handler:
+	/* set Supervisor stack */
+	MOV sp, #0x80000
+	
+	MSR CPSR_c, #INT_OFF|SYS_MODE
+	MOV sp, #0x40000
+	
+	MSR CPSR_c, #INT_OFF|IRQ_MODE
+	MOV sp, #0x10000
+	
+	MSR CPSR_c,#INT_OFF|SVC_MODE
+	
+	/* jump to main */
+	B c_entry
+	
+/*irq_handler:
+	/* Save the return value */
+	/*SUB lr,lr,#4
+	STMFD sp!,{r0-r11,lr}^
+	NOP*/
+
+	/* Save the needed registers */
+	/*msr CPSR_c, #0xDF /* System mode */
+	/*STMFD sp!, {r0-r15}
+	mov r0, sp*/
+
+	/* Save current task context */
+	/*BL SwitchTasks*/
+/*	BL event_irq_handler
+
+	LDMFD sp!,{r0-r12,pc}^*/
+	
+swi_handler:
+
+/* Save user state */
+	msr CPSR_c, #0xDF /* System mode */
+	/* Appeler une fonction de sauvegarde de contexte */
+	push {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,fp,ip,lr}
+	mov r0, sp
+	msr CPSR_c, #0xD3 /* Supervisor mode */
+
+	mrs ip, SPSR
+	stmfd r0!, {ip,lr}
+
+	/* Load kernel state */
+	pop {r4,r5,r6,r7,r8,r9,r10,fp,ip,lr}
+	mov sp, ip
+	bx lr
+	
+
+.end

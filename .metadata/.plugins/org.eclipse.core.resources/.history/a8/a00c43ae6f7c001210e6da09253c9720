@@ -1,0 +1,8 @@
+#define UART0 		((volatile unsigned int*)0x101F1000) // Adresse de UART0 PrimeCell PL011
+#define UARTFR		((volatile unsigned int*)0x101F1018) // Offset pour pointer le registre UARTFR (Flag register)
+#define UARTFR_TXFF 0x20 // Masque à appliquer pour lire l'état du flag buffer d'émission
+// bit 3  : Busy - bit 5 : Transmission Fifo Full
+#define UARTLCR_H 	((volatile unsigned int *)0x101F102C)
+#define UARTCR 		((volatile unsigned int *)0x101F1030)
+#define UARTIMSC 	((volatile unsigned int *)0x101F1038)
+#define UARTICR		((volatile unsigned int *)0x101F1044)

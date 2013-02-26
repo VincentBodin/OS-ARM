@@ -7,7 +7,7 @@ struct taskstruct
 	unsigned int pc;
 	unsigned int cpsr;
 	unsigned int mode;
-
+	unsigned int num;
 	void *stack;
 	int stacksize;
 
@@ -18,4 +18,4 @@ struct taskstruct
 	struct taskstruct *qnext, *qprev;
 };
 
-void init_task(struct taskstruct* task, void * function);
+//void init_task(struct taskstruct* task, void * function);
