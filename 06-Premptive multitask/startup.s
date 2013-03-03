@@ -52,45 +52,27 @@ reset_handler:
 irq_handler:
 	/* Save the return value */
 	SUB lr,lr,#4
-	BL event_irq_handler
-
-
-	MOV r12,lr /* r12 contains the return value of usertask*/
-	MSR CPSR_c, #INT_OFF|SYS_MODE
-	MOV lr, r12
-	STMFD sp!,{r0-r12,lr}
-	NOP
-	/*MOV r0, sp
-	BL afficheValeurRegistres*/
-
+	STMFD sp!, {r0-ip, lr}^ /* Save the user task context */
 	MOV r0, sp
 	BL saveTaskContext
 
-	/*BL loadTaskContext
+	BL event_irq_handler
+
+	/*LDMFD sp!, {r0-ip, lr}
+	MOV ip, lr
+	MSR CPSR_c, #INT_OFF|SYS_MODE
+	MOV lr, ip
+	STMFD sp!,{r0-ip,lr}
 	NOP
-	LDR r1, [r0, #4]
-	LDR r2, [r0, #8]
-	LDR r3, [r0, #12]
-	LDR r4, [r0, #16]
-	LDR r5, [r0, #20]
-	LDR r6, [r0, #24]
-	LDR r7, [r0, #28]
-	LDR r8, [r0, #32]
-	LDR r9, [r0, #36]
-	LDR r10, [r0, #40]
-	LDR r11, [r0, #44]
-	LDR r12, [r0, #48]
-	/*LDR sp [r0, #52]  JUMP OVER SP */
-	/* LDR lr, [r0, #56] NOT NEEDED */
-	/*LDR pc, [r0, #56]*/
+	MOV r0, sp
+	BL saveTaskContext
+	/* Save the user task context */
+	/*MOV ip,lr /* r12 contains the return value of usertask*/
 
-
-	/*MSR CPSR_c, #INT_OFF|IRQ_MODE*/
-	/*LDMFD sp!,{r0-r3,r12,pc}^*/
 
 	/* Load kernel state */
 	MSR CPSR_c,SVC_MODE
-	LDMFD sp!,{r1-r11,pc}
+	LDMFD sp!,{r1-r12,pc}
 	NOP
 	
 swi_handler:
@@ -105,7 +87,7 @@ swi_handler:
 	NOP
 	/* Load kernel state */
 	MSR CPSR_c,SVC_MODE
-	LDMFD sp!,{r0-r11,pc}
+	LDMFD sp,{r0-r11,pc}
 	NOP
 	
 

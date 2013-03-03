@@ -8,16 +8,12 @@
 .global activate
 activate:
 
-
-
-	/*LDR r12, [r0]*/
-	STMFD sp!,{r1-r11,lr}
+	STMFD sp!,{r1-r12,lr}
 	NOP
-	msr CPSR_c, #0x10 /* User mode with IRQ enabled and FIQ disabled*/
-	/*mov sp, r0*/
-	mov pc, r1
-
-	/*pop {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,fp,ip,lr}
-	msr CPSR_c, #0xD3 /* Supervisor mode */
-
-	/*movs pc, lr*/
+	msr CPSR_c, SYS_MODE /* Sys mode with IRQ enabled and FIQ disabled*/
+	mov sp, r0 /* MOVE TO THE STACK USER
+	/* LOAD THE TASK'S CONTEXT */
+	mov ip, r0
+	LDMFD sp!, {r0-ip,lr}
+	NOP
+	mov pc, lr

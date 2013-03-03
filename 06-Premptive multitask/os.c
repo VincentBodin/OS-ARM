@@ -11,14 +11,11 @@
 #define READY		1
 #define WAIT		2
 
-unsigned int taskNumber;
-unsigned int currentTask;
-unsigned int swi_caller;
+
+
 
 typedef struct
 {
-
-	unsigned int *stack;
 	unsigned int *sp;
 	unsigned int registers[12];
 	unsigned int lr;
@@ -35,6 +32,12 @@ typedef struct
 	struct taskstruct *qnext, *qprev;
 }taskstruct;
 
+
+taskstruct task[3];
+unsigned int task_count;
+unsigned int currentTask;
+
+
 void print_uart0(char *s) {
 	while(*s) {
 		while(UARTFR & UARTFR_TXFF);
@@ -44,45 +47,51 @@ void print_uart0(char *s) {
 }
 
 
-unsigned int * init_task(taskstruct * task, void (*function)(void) ){
-	task->stack += 256 - 16;
-	task->sp = (unsigned int*)&function;
-	task->registers[0] = 0; // r0
-	task->registers[1] = 0; // r1
-	task->registers[2] = 0; // r2
-	task->registers[3] = 0; // r3
-	task->registers[4] = 0; // r4
-	task->registers[5] = 0; // r5
-	task->registers[6] = 0; // r6
-	task->registers[7] = 0; // r7
-	task->registers[8] = 0; // r8
-	task->registers[9] = 0; // r9
-	task->registers[10] = 0; // r10
-	task->registers[11] = 0; // r11
-	task->registers[12] = 0; // r12
-	task->lr = 0;
-	task->pc = 0;
+init_task(taskstruct * task, unsigned int* stack, void (*function)(void) ){
+
+
+
+	stack += STACK_SIZE;// - 16; /* End of stack, minus what we're about to push */
+	//stack[0] = 0x10; /* User mode, interrupts on */
+	//stack[1] = (unsigned int)function;
+
+	task->sp = stack;
+
+	task->sp[0] = task->registers[0]; // r0
+	task->sp[1] = task->registers[1];// = task->sp[3];//0; // r1
+	task->sp[2] = task->registers[2];// = task->sp[4];//0; // r2
+	task->sp[3] = task->registers[3];// = task->sp[5];//0; // r3
+	task->sp[4] = task->registers[4];// = task->sp[6];//0; // r4
+	task->sp[5] = task->registers[5];// = task->sp[7];//0; // r5
+	task->sp[6] = task->registers[6];// = task->sp[8];//0; // r6
+	task->sp[7] = task->registers[7];// = task->sp[9];//0; // r7
+	task->sp[8] = task->registers[8];// = task->sp[10];//0; // r8
+	task->sp[9] = task->registers[9];// = task->sp[11];//0; // r9
+	task->sp[10] = task->registers[10];// = task->sp[12];//0; // r10
+	task->sp[11] = task->registers[11];// = task->sp[13];//0; // r11
+	task->sp[12] = task->registers[12];// = task->sp[14];//0; // r12
+	task->sp[13] = (unsigned int)function;
+
+	/*task->pc = task->sp[13];
+	task->lr = task->pc;
+
 	task->cpsr = 0;
-	task->mode = 0x10;
-
-
-	return task->stack;
+	task->mode = 0x10;*/
 }
 
 
 void task1Function(void) {
 	print_uart0("-usertask : First task is started...\r\n");
 	while(1){
-		//print_uart0("-usertask : First task is running...\r\n");
-		//syscall(1);
+		print_uart0("-usertask : First task is running...\r\n");
 	}
 }
 
 void task2Function(void) {
-		print_uart0("-usertask : Second task is running...\r\n");
+		print_uart0("-usertask : Second task is started...\r\n");
 		//syscall(); /* To return in the kernel's mode */
 		while(1){
-
+			print_uart0("-usertask : Second task is running...\r\n");
 		}
 }
 
@@ -92,27 +101,35 @@ void task2Function(void) {
 afficheValeurRegistres( int * ptr)
 {
 	char printable;
-	int * pointeur;
+		int * pointeur;
+		int i;
+		print_uart0("Affichage des registres reçus\r\n");
 
-	print_uart0("Affichage des registres reçus\r\n");
-	printable = *ptr + (int)'0';
-	print_uart0(&printable);
-	print_uart0("\r\n");
+		for( i = 1; i <= 4; i++){
+			printable = *(ptr+i) + (int)'0';
+			print_uart0(&printable);
+			print_uart0("\r\n");
+		}
 }
 
 
-taskstruct task[3];
-	
 void c_entry(void) {
-	
+	task_count = 0;
+	currentTask = 0;
+
 	/** VIC Configuration **/
 	VIC_INT_SELECT = 0; // All interrupts are IRQ
 	VIC_ENABLE_INT = 0x00000210; // Enable Timer01 Interrupt and UART0
 
+
+
+	unsigned int user_stacks[TASK_LIMIT][STACK_SIZE];
+
 	// Task initialization
-	task[0].stack = init_task(&task[0],&task1Function);
-	task[1].stack = init_task(&task[1],&task2Function);
-	//init_task(&task[1],&task2Function);
+	init_task(&task[0], user_stacks[0], &task1Function);
+	task_count = task_count + 1;
+	init_task(&task[1], user_stacks[1], &task2Function);
+	task_count = task_count + 1;
 	/*init_task(&task[2],&task3Function);*/
 
 	// Link tasks
@@ -121,43 +138,30 @@ void c_entry(void) {
 	task[2].qnext = &task[3];
 	task[3].qnext = &task[0];*/
 
+	displayWelcomeMessage();
 	print_uart0("OS : Starting...\n");
 	print_uart0("OS : Scheduler implementation : Round Robin\n");
 
-	currentTask = 0;
-
-	/* Enable IRQ interrupt */
-	asm("MSR CPSR_c, 0x13");
 
 	// Timer1 Configuration
-	//TIMER01_disable();
-	TIMER01_LOAD_VALUE = 65000;
+	TIMER01_disable();
+	TIMER01_LOAD_VALUE = 65535;
 	//TIMER01_CONTROL |= 0x00000008;
 	TIMER01_enable();
 
 
-	//activate(task[0].sp);
-	activate(task[0].stack);
+	activate(task[currentTask].sp);
 
-	print_uart0("Kernel get back control ! \n");
 	while(1){
-		//activate(task[0].stack);
 		/* Disable IRQ interrupt */
-//		TIMER01_disable();
-//		asm("MSR CPSR_c, 0xC3");
-//		print_uart0("Kernel get back control ! \n");
-//		if(currentTask <= 2) currentTask += 1;
-//			else currentTask = 0;
-//
-//		char printable = currentTask+(int)'0';
-//		print_uart0("Next activated task : "); print_uart0(&printable);
-//		print_uart0("\r\n");
-//
-//		/* Enable IRQ interrupt */
-//		asm("MSR CPSR_c, 0x13");
-//		TIMER01_LOAD_VALUE = 65000;
-//		TIMER01_enable();
-//		activate(task[currentTask].sp);
+		TIMER01_disable();
+		print_uart0("Kernel gets back control ! \n");
+		print_uart0("Load the next task ! \n");
+		currentTask = currentTask+1;
+		if(currentTask >= task_count) currentTask = 0;
+		TIMER01_LOAD_VALUE = 65535;
+		TIMER01_enable();
+		activate(task[currentTask].sp);
 	}
 }
 
@@ -196,31 +200,36 @@ TIMER01_LOAD_VALUE = 50000;
 
 void saveTaskContext(int * ptr){
 	int i = 0;
-	for ( i = 0 ; i < 13 ; i++){
-		task[currentTask].registers[i] = *(ptr+i);
+
+	/* UPDATE THE STACK TASK */
+	for ( i = 0 ; i <= 13 ; i++ ){
+		task[currentTask].sp[i] = *(ptr+i);
 	}
 
-	task[currentTask].lr = *(ptr+14);
-	task[currentTask].pc = task[currentTask].lr;//*(ptr+15); // Cause it's where we have to branch the next time
+	/*task[0].sp[13] = *(ptr+13); // LR
+	task[0].sp[14] = task[0].sp[13];// Cause it's where we have to branch the next time
 
+	print_uart0("SAVED REGISTERS : \n");
 
-	/*print_uart0("Affichage des registres après sauvegarde : \n");
-	char printable = task[currentTask].registers[0] + (int)'0';
-	print_uart0(&printable);
-	print_uart0("\r\n");
-	printable = task[currentTask].registers[1] + (int)'0';
-	print_uart0(&printable);
-	print_uart0("\r\n");
-	printable = task[currentTask].registers[2] + (int)'0';
-	print_uart0(&printable);
-	print_uart0("\r\n");*/
+	for (i = 0 ; i <= 13 ; i ++ ){
+		printable = task[0].sp[i] + (int)'0';
+		print_uart0(&printable);
+		print_uart0("\r\n");
+	}*/
 }
 
-int * loadTaskContext(void){
-	if(currentTask < 2) currentTask += 1;
-	else currentTask = 0;
 
-	return &task[currentTask].registers[0];
+int * loadTaskContext( int* ptr){
+
+	int i = 0;
+	char printable;
+
+	for( i = 0 ; i <= 12 ; i++)
+		*(ptr+i) = task[currentTask].registers[i];
+
+	 *(ptr+14) =task[currentTask].lr;
+
+	return ptr;
 }
 
 void event_swi_handler(int taskNumber){
