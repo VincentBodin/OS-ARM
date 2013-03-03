@@ -12,12 +12,16 @@ LDFLAGS=-N -Ttext=0x10000
 os.bin : os.elf 
 	arm-linux-objcopy -O binary os.elf os.bin
 
-os.elf : linker.ld os.o startup.o context_switch.o syscall.o
-	arm-linux-ld -N -Ttext=0x10000 -T linker.ld os.o startup.o syscall.o context_switch.o -o os.elf 
+os.elf : linker.ld os.o startup.o context_switch.o syscall.o task.o
+	arm-linux-ld -N -Ttext=0x10000 -T linker.ld os.o startup.o syscall.o context_switch.o task.o -o os.elf 
 
-os.o : os.c include/timer.h include/VIC.h include/UART.h include/asm.h Task.h
+os.o : os.c include/timer.h include/VIC.h include/UART.h include/asm.h include/task.h
 	arm-linux-gcc -mcpu=arm926ej-s  -c os.c -o os.o -g3
+
+task.o: task.c include/task.h
+	arm-linux-gcc -mcpu=arm926ej-s  -c task.c -o task.o -g3
 	
+
 startup.o : startup.s
 	arm-linux-as -mcpu=arm926ej-s -g startup.s -o startup.o
 	

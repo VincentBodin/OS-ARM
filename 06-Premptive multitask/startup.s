@@ -58,18 +58,6 @@ irq_handler:
 
 	BL event_irq_handler
 
-	/*LDMFD sp!, {r0-ip, lr}
-	MOV ip, lr
-	MSR CPSR_c, #INT_OFF|SYS_MODE
-	MOV lr, ip
-	STMFD sp!,{r0-ip,lr}
-	NOP
-	MOV r0, sp
-	BL saveTaskContext
-	/* Save the user task context */
-	/*MOV ip,lr /* r12 contains the return value of usertask*/
-
-
 	/* Load kernel state */
 	MSR CPSR_c,SVC_MODE
 	LDMFD sp!,{r1-r12,pc}
@@ -77,17 +65,23 @@ irq_handler:
 	
 swi_handler:
 
+	MOV ip, r0
+
 	/* Save user state */
 	MSR CPSR_c, #INT_OFF|SYS_MODE
 	STMFD sp!,{r0-r12,lr}
 	NOP
-	MOV r0, sp
+	mov r0, sp
 	BL saveTaskContext
-
 	NOP
+
+	MOV r0, ip
+	BL event_swi_handler
+
+
 	/* Load kernel state */
 	MSR CPSR_c,SVC_MODE
-	LDMFD sp,{r0-r11,pc}
+	LDMFD sp!,{r1-r12,pc}
 	NOP
 	
 
